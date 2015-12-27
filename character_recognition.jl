@@ -1,6 +1,7 @@
 using DataFrames
 using Images
 using DecisionTree
+using BackpropNeuralNet
 
 IMAGE_SIZE = 20 * 20
 
@@ -71,8 +72,6 @@ function nfoldCV(split::Int, func)
     # To accelerate development, use 30% subset of the data for now.
     subset = rand(nrow(train))
     train = train[subset .< 0.3, :]
-
-    println(hist(train[:Class]))
     
     add_random_selection_column!(train)
     selection_key = train[:, :SelectionKey]
@@ -147,10 +146,32 @@ function my_knn(train_y, train_x, test_x)
     prediction
 end
 
+function my_nn(train_y, train_x, test_x)
+    net = init_network([IMAGE_SIZE, 1024, 128])
+
+    for train_row_index in 1:size(train_x, 1)
+        labels = zeros(128)
+        labels[train_y[train_row_index] + 1] = 1.0
+        ret = train(net,
+                    train_x'[:, train_row_index],
+                    labels)
+    end
+
+    prediction = zeros(size(test_x, 1))
+    for test_row_index in 1:size(test_x, 1)
+        predicted_values = net_eval(net, test_x'[:, test_row_index])
+        (value, index) = findmax(predicted_values)
+        prediction[test_row_index] = index - 1
+    end
+    prediction
+end
+    
+
 # @time random_forest()
 
 # nfoldCV(2, my_random_forest)
 
 #nfoldCV(5, my_knn)
-nfoldCV(5, my_random_forest)
+# nfoldCV(5, my_random_forest)
 
+nfoldCV(5, my_nn)
